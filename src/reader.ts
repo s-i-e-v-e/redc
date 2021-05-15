@@ -116,13 +116,24 @@ export async function backup_ps_user(user: string) {
     while (true) {
         await delay(1500);
         const u = `${url}${after}`
-        const xs: any[] = (await (await fetch(u)).json()).data;
-        if (!xs.length) break;
-        const a = xs[0];
-        const b = xs[xs.length-1];
-        console.log(`count: ${xs.length}, from: ${a.created_utc}, to: ${b.created_utc}`);
-        after = b.created_utc;
-        ys.push(...xs);
+        let mm: Response;
+        try {
+            mm = await fetch(u);
+            if (!mm.ok) {
+                console.log(mm.statusText);
+                continue;
+            }
+            const xs: any[] = (await mm.json()).data;
+            if (!xs.length) break;
+            const a = xs[0];
+            const b = xs[xs.length-1];
+            console.log(`count: ${xs.length}, from: ${a.created_utc}, to: ${b.created_utc}`);
+            after = b.created_utc;
+            ys.push(...xs);
+        }
+        catch (e) {
+            console.log(e);
+        }
     }
     writeTextFile(`${userPath}/${user}/ps_comments/meta.json`, JSON.stringify(ys));
 }
