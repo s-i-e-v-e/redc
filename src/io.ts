@@ -6,6 +6,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 const userAgent = "deno:redc:0.1 (by /u/_sieve)"
+export {
+    fs_file_exists,
+    fs_cp,
+    fs_read_utf8,
+    fs_write_utf8,
+    fs_parse_path
+} from "https://raw.githubusercontent.com/s-i-e-v-e/nonstd/3b664da5b5e8013cb36b1557d550e0a80da95636/src/ts/os/fs.ts"
+
 
 export interface AccessToken {
     access_token: string,
@@ -37,56 +45,4 @@ export async function http_post(url: string, auth: string, contentType: string, 
         body: body,
     });
     return response.json();
-}
-
-interface FileName {
-    dir: string,
-    name: string,
-    ext: string,
-}
-
-function parse_path(file: string) {
-    let n = file.lastIndexOf("/");
-    const dir = n === -1 ? "." : file.substring(0, n);
-    file = n === -1 ? file : file.substring(n + 1);
-
-    n = file.lastIndexOf(".");
-    const name = n === -1 ? file : file.substring(0, n);
-    const ext = n === -1 ? '' : file.substring(n);
-    return {
-        dir: dir,
-        name: name,
-        ext: ext,
-    };
-}
-
-function mkdir(dir: string) {
-    if (!exists(dir)) Deno.mkdirSync(dir, { recursive: true });
-}
-
-export function writeTextFile(p: string, data: string) {
-    const fp = parse_path(p);
-    mkdir(fp.dir);
-    Deno.writeTextFileSync(p, data);
-}
-
-export function readTextFile(p: string) {
-    const fp = parse_path(p);
-    mkdir(fp.dir);
-    return Deno.readTextFileSync(p);
-}
-
-export function exists(p: string) {
-    try {
-        Deno.statSync(p as string);
-        return true;
-    }
-    catch (e) {
-        if (e instanceof Deno.errors.NotFound) {
-            return false;
-        }
-        else {
-            throw e;
-        }
-    }
 }

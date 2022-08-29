@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-import {exists, readTextFile, writeTextFile, AccessToken, http_get, http_post} from './io.ts';
+import {fs_file_exists, fs_read_utf8, fs_write_utf8, AccessToken, http_get, http_post} from './io.ts';
 import { delay } from 'https://deno.land/std/async/delay.ts'
 
 const credFile = '.redc/cred.rc';
@@ -15,7 +15,7 @@ const userPath = '.redc/user';
 
 export async function http_auth() {
     const map: Map<string, string> = new Map();
-    readTextFile(credFile).split('\n').forEach(x => { const ys = x.split('='); map.set(ys[0], ys[1]); });
+    fs_read_utf8(credFile).split('\n').forEach(x => { const ys = x.split('='); map.set(ys[0], ys[1]); });
 
     const clientID = map.get('clientID');
     const clientSecret = map.get('clientSecret');
@@ -34,8 +34,8 @@ export async function http_auth() {
 async function get_auth() {
     let now = Date.now();
     let auth;
-    if (exists(authFile)) {
-        let xs: string[] = readTextFile(authFile).split('=');
+    if (fs_file_exists(authFile)) {
+        let xs: string[] = fs_read_utf8(authFile).split('=');
         const a = Number(xs[0]);
         if (now >=  a + 3000_000) {
             // expired/ will expire in 10 min
@@ -49,7 +49,7 @@ async function get_auth() {
     else {
         auth = await http_auth();
     }
-    writeTextFile(authFile, `${now}=${auth}`);
+    fs_write_utf8(authFile, `${now}=${auth}`);
     return auth;
 }
 
@@ -58,18 +58,18 @@ export async function backup_user(user: string) {
 
     // comments
     const comments = await list(`https://oauth.reddit.com/user/${user}/comments`, auth);
-    writeTextFile(`${userPath}/${user}/comments/meta.json`, JSON.stringify(comments));
+    fs_write_utf8(`${userPath}/${user}/comments/meta.json`, JSON.stringify(comments));
 
     // submitted
     const submitted = await list(`https://oauth.reddit.com/user/${user}/submitted`, auth);
-    writeTextFile(`${userPath}/${user}/submitted/meta.json`, JSON.stringify(submitted));
+    fs_write_utf8(`${userPath}/${user}/submitted/meta.json`, JSON.stringify(submitted));
 }
 
 export async function backup_wiki(sub: string, page: string) {
     const auth = await get_auth();
     const b = await list(`https://oauth.reddit.com${sub}/wiki/revisions${page}`, auth);
     b.forEach(x => x.author = x.author.data.name);
-    writeTextFile(`${wikiPath}${page}/meta.json`, JSON.stringify(b));
+    fs_write_utf8(`${wikiPath}${page}/meta.json`, JSON.stringify(b));
 
     for (const x of b) {
         await backup_wiki_page_rev(sub, page, x.id, auth);
@@ -79,13 +79,13 @@ export async function backup_wiki(sub: string, page: string) {
 async function backup_wiki_page_rev(sub: string, page: string, id: string, auth: string) {
     const fp = `${wikiPath}${page}/${id}.json`;
     const up = `https://oauth.reddit.com${sub}/wiki${page}?v=${id}`;
-    if (!exists(fp)) {
+    if (!fs_file_exists(fp)) {
         await delay(1500);
         console.log(`downloading: ${fp}`);
         const y = await http_get(up, auth);
         const x = y.data;
         x.revision_by = x.revision_by.data.name;
-        writeTextFile(fp, JSON.stringify(x));
+        fs_write_utf8(fp, JSON.stringify(x));
     }
 }
 
@@ -135,5 +135,5 @@ export async function backup_ps_user(user: string) {
             console.log(e);
         }
     }
-    writeTextFile(`${userPath}/${user}/ps_comments/meta.json`, JSON.stringify(ys));
+    fs_write_utf8(`${userPath}/${user}/ps_comments/meta.json`, JSON.stringify(ys));
 }
